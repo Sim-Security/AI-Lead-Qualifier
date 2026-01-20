@@ -4,7 +4,8 @@ import { db, schema } from "@/db/index.ts";
 import { eq, and, isNull } from "drizzle-orm";
 import { env } from "@/config/env.ts";
 import { log } from "@/middleware/logger.ts";
-import type { ApiResponse, QualificationResult } from "@/types/index.ts";
+import { extractQualificationData, type CallContext } from "@/services/index.ts";
+import type { ApiResponse } from "@/types/index.ts";
 import type { Lead } from "@/db/schema.ts";
 
 const webhooks = new Hono();
@@ -306,88 +307,6 @@ async function initiateVapiCall(lead: Lead): Promise<{ callId: string } | null> 
   }
 }
 
-/**
- * Extracts qualification data from a call transcript using AI analysis
- */
-function extractQualificationFromTranscript(
-  transcript: string,
-  analysis?: { structuredData: Record<string, unknown> }
-): Partial<QualificationResult> {
-  // If Vapi provided structured analysis, use it
-  if (analysis?.structuredData) {
-    const data = analysis.structuredData;
-    const result: Partial<QualificationResult> = {};
-    if (typeof data.motivation === "string") result.motivation = data.motivation;
-    if (typeof data.timeline === "string") result.timeline = data.timeline;
-    if (typeof data.budget === "string") result.budget = data.budget;
-    if (typeof data.authority === "string") result.authority = data.authority;
-    if (typeof data.pastExperience === "string") result.pastExperience = data.pastExperience;
-    if (isValidIntent(data.intent)) result.intent = data.intent;
-    if (typeof data.qualificationScore === "number") result.qualificationScore = data.qualificationScore;
-    return result;
-  }
-
-  // Basic keyword-based qualification scoring as fallback
-  const qualificationResult: Partial<QualificationResult> = {};
-  const lowerTranscript = transcript.toLowerCase();
-
-  // Detect timeline indicators
-  if (lowerTranscript.includes("asap") || lowerTranscript.includes("immediately") || lowerTranscript.includes("urgent")) {
-    qualificationResult.timeline = "Immediate (0-2 weeks)";
-  } else if (lowerTranscript.includes("this month") || lowerTranscript.includes("few weeks")) {
-    qualificationResult.timeline = "Short-term (2-4 weeks)";
-  } else if (lowerTranscript.includes("this quarter") || lowerTranscript.includes("next month")) {
-    qualificationResult.timeline = "Medium-term (1-3 months)";
-  } else if (lowerTranscript.includes("next quarter") || lowerTranscript.includes("later this year")) {
-    qualificationResult.timeline = "Long-term (3+ months)";
-  }
-
-  // Detect budget indicators
-  if (lowerTranscript.includes("budget approved") || lowerTranscript.includes("ready to invest")) {
-    qualificationResult.budget = "Budget confirmed";
-  } else if (lowerTranscript.includes("exploring options") || lowerTranscript.includes("getting quotes")) {
-    qualificationResult.budget = "Evaluating budget";
-  } else if (lowerTranscript.includes("no budget") || lowerTranscript.includes("limited budget")) {
-    qualificationResult.budget = "Budget constraints";
-  }
-
-  // Detect authority indicators
-  if (lowerTranscript.includes("decision maker") || lowerTranscript.includes("i decide") || lowerTranscript.includes("final say")) {
-    qualificationResult.authority = "Decision maker";
-  } else if (lowerTranscript.includes("need to check") || lowerTranscript.includes("discuss with")) {
-    qualificationResult.authority = "Influencer";
-  }
-
-  // Calculate qualification score based on signals
-  let score = 50; // Base score
-  const positiveSignals = ["interested", "need", "want", "looking for", "excited", "great", "perfect"];
-  const negativeSignals = ["not interested", "maybe later", "not sure", "too expensive", "busy"];
-
-  for (const signal of positiveSignals) {
-    if (lowerTranscript.includes(signal)) score += 5;
-  }
-  for (const signal of negativeSignals) {
-    if (lowerTranscript.includes(signal)) score -= 10;
-  }
-
-  // Clamp score between 0 and 100
-  qualificationResult.qualificationScore = Math.max(0, Math.min(100, score));
-
-  // Determine intent based on score
-  if (qualificationResult.qualificationScore >= 70) {
-    qualificationResult.intent = "hot";
-  } else if (qualificationResult.qualificationScore >= 40) {
-    qualificationResult.intent = "warm";
-  } else {
-    qualificationResult.intent = "cold";
-  }
-
-  return qualificationResult;
-}
-
-function isValidIntent(value: unknown): value is "hot" | "warm" | "cold" {
-  return value === "hot" || value === "warm" || value === "cold";
-}
 
 /**
  * Calculate call duration in seconds from timestamps
@@ -609,14 +528,23 @@ webhooks.post("/vapi", async (c) => {
           .join("\n");
       }
 
-      // Extract qualification data from transcript
-      let qualificationData: Partial<QualificationResult> = {};
-      if (transcript) {
-        const analysisData = callData.analysis?.structuredData
-          ? { structuredData: callData.analysis.structuredData }
-          : undefined;
-        qualificationData = extractQualificationFromTranscript(transcript, analysisData);
-      }
+      // Extract qualification data using AI-powered analysis
+      // Includes call context (duration, end reason) for accurate scoring
+      const callContext: CallContext = {
+        transcript: transcript || null,
+        duration: duration,
+        endedReason: callData.endedReason || null,
+      };
+
+      const qualificationData = await extractQualificationData(callContext);
+
+      log("info", "Qualification analysis complete", {
+        leadId,
+        intent: qualificationData.intent,
+        score: qualificationData.qualificationScore,
+        endedReason: callData.endedReason,
+        duration,
+      });
 
       await db
         .update(schema.leads)
@@ -765,14 +693,14 @@ webhooks.post("/sync/:leadId", async (c) => {
         .join("\n");
     }
 
-    // Extract qualification data from transcript
-    let qualificationData: Partial<QualificationResult> = {};
-    if (transcript) {
-      const analysisData = callData.analysis?.structuredData
-        ? { structuredData: callData.analysis.structuredData }
-        : undefined;
-      qualificationData = extractQualificationFromTranscript(transcript, analysisData);
-    }
+    // Extract qualification data using AI-powered analysis
+    const callContext: CallContext = {
+      transcript: transcript || null,
+      duration: duration,
+      endedReason: callData.endedReason || null,
+    };
+
+    const qualificationData = await extractQualificationData(callContext);
 
     // Update the lead
     const [updatedLead] = await db

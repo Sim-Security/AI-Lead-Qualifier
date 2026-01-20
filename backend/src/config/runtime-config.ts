@@ -60,6 +60,7 @@ export function getConfig(): Readonly<RuntimeConfig> {
 export function isConfigured(): boolean {
   return !!(
     config.vapiApiKey &&
+    config.vapiPhoneNumberId &&
     config.anthropicApiKey
   );
 }
@@ -70,10 +71,10 @@ export function isConfigured(): boolean {
 export function getMissingKeys(): string[] {
   const missing: string[] = [];
   if (!config.vapiApiKey) missing.push('vapiApiKey');
+  if (!config.vapiPhoneNumberId) missing.push('vapiPhoneNumberId');
   if (!config.anthropicApiKey) missing.push('anthropicApiKey');
-  // These are optional for basic functionality
+  // Webhook secret is optional - only needed if validating webhook signatures
   // if (!config.vapiWebhookSecret) missing.push('vapiWebhookSecret');
-  // if (!config.vapiPhoneNumberId) missing.push('vapiPhoneNumberId');
   return missing;
 }
 

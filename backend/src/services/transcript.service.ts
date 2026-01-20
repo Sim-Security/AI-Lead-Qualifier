@@ -3,11 +3,24 @@
  *
  * AI-powered transcript analysis using Anthropic Claude.
  * Extracts qualification data from call transcripts using BANT framework.
+ * Includes call context (duration, end reason) for accurate qualification.
  */
 
 import Anthropic from "@anthropic-ai/sdk";
-import { getConfig } from "@/config/runtime-config";
+import { getConfig, isConfigured } from "@/config/runtime-config";
 import type { QualificationResult, Intent } from "@/types";
+
+/**
+ * Call context metadata for more accurate qualification
+ */
+export interface CallContext {
+  /** Call duration in seconds */
+  duration?: number | null;
+  /** Why the call ended */
+  endedReason?: string | null;
+  /** Raw transcript text */
+  transcript?: string | null;
+}
 
 /**
  * Get Anthropic client with current runtime config
@@ -24,9 +37,31 @@ function getAnthropicClient(): Anthropic {
 }
 
 /**
- * The extraction prompt for Claude to analyze transcripts
+ * Builds the extraction prompt for Claude to analyze transcripts
+ * Includes call context for more accurate qualification
  */
-const EXTRACTION_PROMPT = `You are an expert lead qualification analyst. Analyze the following call transcript between a sales qualification assistant and a potential lead.
+function buildExtractionPrompt(context: CallContext): string {
+  const contextInfo: string[] = [];
+
+  if (context.duration !== undefined && context.duration !== null) {
+    contextInfo.push(`- Call Duration: ${context.duration} seconds`);
+  }
+  if (context.endedReason) {
+    contextInfo.push(`- How Call Ended: ${context.endedReason}`);
+  }
+
+  const contextSection = contextInfo.length > 0
+    ? `\n\nCALL CONTEXT (Important for qualification):\n${contextInfo.join('\n')}\n`
+    : '';
+
+  return `You are an expert lead qualification analyst. Analyze the following call transcript between a sales qualification assistant and a potential lead.
+${contextSection}
+CRITICAL RULES FOR QUALIFICATION:
+- If the call was very short (under 30 seconds) or the customer hung up early, this is likely a COLD lead with a LOW score
+- "customer-ended-call" with short duration = disinterested, score should be 0-20
+- "silence-timed-out" = no engagement, score should be 0-15
+- "voicemail-reached" = couldn't reach them, score should be 10-25
+- Only calls with actual conversation and engagement should score above 40
 
 Extract the following BANT (Budget, Authority, Need, Timeline) qualification data:
 
@@ -43,15 +78,15 @@ Extract the following BANT (Budget, Authority, Need, Timeline) qualification dat
 Based on your analysis, also determine:
 
 6. **Intent Classification**: Classify the lead as "hot", "warm", or "cold" based on:
-   - HOT: Clear need, budget available, decision maker, urgent timeline (within 3 months), actively seeking solution
-   - WARM: Interested but missing 1-2 key factors (budget not confirmed, longer timeline, needs approval)
-   - COLD: No clear timeline, budget concerns, just exploring, low engagement
+   - HOT: Clear need, budget available, decision maker, urgent timeline (within 3 months), actively seeking solution, engaged throughout call
+   - WARM: Interested but missing 1-2 key factors (budget not confirmed, longer timeline, needs approval), had meaningful conversation
+   - COLD: Hung up early, no clear timeline, budget concerns, just exploring, low/no engagement, very short call
 
 7. **Qualification Score (0-100)**: Calculate based on:
+   - Engagement (25 points): Full conversation = 25, Partial = 15, Hung up early = 0, No answer = 0
    - Urgency (25 points): Immediate need = 25, 1-3 months = 20, 3-6 months = 15, 6-12 months = 10, No timeline = 5
    - Budget (25 points): Budget confirmed = 25, Likely available = 20, TBD = 10, Budget concerns = 5
    - Authority (25 points): Decision maker = 25, Strong influencer = 20, Influencer = 15, User only = 10
-   - Need Clarity (25 points): Clear problem statement = 25, Some understanding = 15, Vague = 5
 
 Respond ONLY with a valid JSON object in the following format (no markdown, no explanation):
 {
@@ -63,21 +98,41 @@ Respond ONLY with a valid JSON object in the following format (no markdown, no e
   "intent": "hot" | "warm" | "cold",
   "qualificationScore": number between 0 and 100
 }`;
+}
 
 /**
- * Extracts qualification data from a call transcript using Claude AI
+ * Extracts qualification data from a call using Claude AI
+ * Handles edge cases like hangups and short calls without needing AI
  *
- * @param transcript - The full call transcript text
+ * @param context - Call context including transcript, duration, and end reason
  * @returns Structured qualification data
  */
 export async function extractQualificationData(
-  transcript: string
+  context: CallContext
 ): Promise<QualificationResult> {
+  const { transcript, duration, endedReason } = context;
+
+  // Check for obvious cold lead signals first (no AI needed)
+  const coldLeadResult = checkForColdLeadSignals(context);
+  if (coldLeadResult) {
+    console.log("[TranscriptService] Cold lead detected from call signals", {
+      duration,
+      endedReason,
+    });
+    return coldLeadResult;
+  }
+
+  // If no Anthropic key configured, use fallback analysis
+  if (!isConfigured()) {
+    console.warn("[TranscriptService] Anthropic API not configured, using fallback analysis");
+    return fallbackAnalysis(context);
+  }
+
   try {
-    // Validate input
+    // Validate transcript
     if (!transcript || transcript.trim().length === 0) {
-      console.warn("[TranscriptService] Empty transcript provided, returning default values");
-      return getDefaultQualificationResult();
+      console.warn("[TranscriptService] Empty transcript provided, returning cold lead values");
+      return getColdLeadResult("No conversation recorded");
     }
 
     // Clean and truncate transcript if too long (Claude has context limits)
@@ -93,7 +148,7 @@ export async function extractQualificationData(
       messages: [
         {
           role: "user",
-          content: `${EXTRACTION_PROMPT}\n\n--- TRANSCRIPT START ---\n${truncatedTranscript}\n--- TRANSCRIPT END ---`,
+          content: `${buildExtractionPrompt(context)}\n\n--- TRANSCRIPT START ---\n${truncatedTranscript}\n--- TRANSCRIPT END ---`,
         },
       ],
     });
@@ -102,7 +157,7 @@ export async function extractQualificationData(
     const textContent = response.content.find((block) => block.type === "text");
     if (!textContent || textContent.type !== "text") {
       console.error("[TranscriptService] No text content in Claude response");
-      return getDefaultQualificationResult();
+      return fallbackAnalysis(context);
     }
 
     // Parse JSON response
@@ -114,9 +169,156 @@ export async function extractQualificationData(
   } catch (error) {
     console.error("[TranscriptService] Error extracting qualification data:", error);
 
-    // Return default values on error
-    return getDefaultQualificationResult();
+    // Return fallback analysis on error
+    return fallbackAnalysis(context);
   }
+}
+
+/**
+ * Check for obvious cold lead signals that don't require AI analysis
+ */
+function checkForColdLeadSignals(context: CallContext): QualificationResult | null {
+  const { duration, endedReason } = context;
+
+  // Very short call (under 15 seconds) - definitely cold
+  if (duration !== undefined && duration !== null && duration < 15) {
+    return getColdLeadResult("Call ended immediately - no engagement");
+  }
+
+  // Customer hung up quickly (under 30 seconds)
+  if (
+    endedReason === "customer-ended-call" &&
+    duration !== undefined &&
+    duration !== null &&
+    duration < 30
+  ) {
+    return getColdLeadResult("Customer hung up early - not interested");
+  }
+
+  // Silence timeout - no engagement at all
+  if (endedReason === "silence-timed-out") {
+    return {
+      motivation: "No engagement - call timed out due to silence",
+      timeline: "Unknown",
+      budget: "Unknown",
+      authority: "Unknown",
+      pastExperience: "Unknown",
+      intent: "cold",
+      qualificationScore: 5,
+    };
+  }
+
+  // Voicemail - couldn't reach them
+  if (endedReason === "voicemail-reached") {
+    return {
+      motivation: "Could not reach - went to voicemail",
+      timeline: "Unknown",
+      budget: "Unknown",
+      authority: "Unknown",
+      pastExperience: "Unknown",
+      intent: "cold",
+      qualificationScore: 15,
+    };
+  }
+
+  // Technical failure
+  if (
+    endedReason === "pipeline-error-exceeded-max-retries" ||
+    endedReason === "phone-call-provider-closed-websocket"
+  ) {
+    return {
+      motivation: "Call failed due to technical issues",
+      timeline: "Unknown",
+      budget: "Unknown",
+      authority: "Unknown",
+      pastExperience: "Unknown",
+      intent: "cold",
+      qualificationScore: 10,
+    };
+  }
+
+  return null; // No obvious cold signals, proceed with AI analysis
+}
+
+/**
+ * Fallback analysis when Anthropic is not available
+ * Uses basic keyword matching and call signals
+ */
+function fallbackAnalysis(context: CallContext): QualificationResult {
+  const { transcript, duration, endedReason } = context;
+
+  // Start with base score influenced by call signals
+  let score = 30; // Lower base than before
+
+  // Penalize short calls heavily
+  if (duration !== undefined && duration !== null) {
+    if (duration < 30) score -= 20;
+    else if (duration < 60) score -= 10;
+    else if (duration > 180) score += 15; // Reward longer conversations
+    else if (duration > 120) score += 10;
+  }
+
+  // Penalize customer-ended-call
+  if (endedReason === "customer-ended-call") {
+    score -= 15;
+  }
+
+  // Analyze transcript if available
+  if (transcript && transcript.trim().length > 0) {
+    const lowerTranscript = transcript.toLowerCase();
+
+    // Positive signals
+    const positiveSignals = ["interested", "need", "want", "looking for", "excited", "great", "perfect", "yes", "tell me more"];
+    const negativeSignals = ["not interested", "maybe later", "not sure", "too expensive", "busy", "no thanks", "goodbye", "not right now"];
+
+    for (const signal of positiveSignals) {
+      if (lowerTranscript.includes(signal)) score += 5;
+    }
+    for (const signal of negativeSignals) {
+      if (lowerTranscript.includes(signal)) score -= 10;
+    }
+  } else {
+    // No transcript = no conversation = cold
+    score -= 20;
+  }
+
+  // Clamp score
+  score = Math.max(0, Math.min(100, score));
+
+  // Determine intent based on score
+  let intent: Intent;
+  if (score >= 60) {
+    intent = "hot";
+  } else if (score >= 35) {
+    intent = "warm";
+  } else {
+    intent = "cold";
+  }
+
+  return {
+    motivation: "Analysis performed without AI - limited data available",
+    timeline: "Not determined",
+    budget: "Not determined",
+    authority: "Not determined",
+    pastExperience: "Not determined",
+    intent,
+    qualificationScore: score,
+  };
+}
+
+/**
+ * Returns a cold lead result with custom motivation
+ */
+function getColdLeadResult(motivation: string): QualificationResult {
+  return {
+    motivation,
+    timeline: "Unknown",
+    budget: "Unknown",
+    authority: "Unknown",
+    pastExperience: "Unknown",
+    intent: "cold",
+    qualificationScore: 10,
+  };
 }
 
 /**

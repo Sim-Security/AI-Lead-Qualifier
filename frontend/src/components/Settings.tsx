@@ -247,7 +247,7 @@ export default function Settings() {
 
             <div>
               <label htmlFor="vapiPhoneNumberId" className="label">
-                Phone Number ID <span className="text-secondary-400">(optional)</span>
+                Phone Number ID {!status?.hasVapiPhoneNumberId && <span className="text-danger-500">*</span>}
               </label>
               <input
                 type="text"
@@ -259,6 +259,9 @@ export default function Settings() {
                 placeholder={status?.hasVapiPhoneNumberId ? '••••••••••••••••' : 'Enter Vapi phone number ID'}
                 disabled={saving}
               />
+              <p className="mt-1 text-xs text-secondary-500">
+                Find this in your Vapi dashboard under Phone Numbers
+              </p>
               {status?.hasVapiPhoneNumberId && (
                 <p className="mt-1 text-sm text-success-600">Currently set</p>
               )}

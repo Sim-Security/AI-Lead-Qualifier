@@ -36,4 +36,5 @@ export {
   extractQualificationData,
   generateCallSummary,
   analyzeSentiment,
+  type CallContext,
 } from "./transcript.service";
