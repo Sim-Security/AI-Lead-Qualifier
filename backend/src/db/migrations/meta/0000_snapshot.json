@@ -1,0 +1,313 @@
+{
+  "id": "1d36bc83-a7ea-486a-b000-aa97623805bb",
+  "prevId": "00000000-0000-0000-0000-000000000000",
+  "version": "7",
+  "dialect": "postgresql",
+  "tables": {
+    "public.leads": {
+      "name": "leads",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "first_name": {
+          "name": "first_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "last_name": {
+          "name": "last_name",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "phone": {
+          "name": "phone",
+          "type": "varchar(50)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "company": {
+          "name": "company",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "role": {
+          "name": "role",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "company_size": {
+          "name": "company_size",
+          "type": "company_size",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "initial_request": {
+          "name": "initial_request",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "call_id": {
+          "name": "call_id",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "call_status": {
+          "name": "call_status",
+          "type": "call_status",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "call_duration": {
+          "name": "call_duration",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "call_started_at": {
+          "name": "call_started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "call_ended_at": {
+          "name": "call_ended_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "motivation": {
+          "name": "motivation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "timeline": {
+          "name": "timeline",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "budget": {
+          "name": "budget",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "authority": {
+          "name": "authority",
+          "type": "varchar(100)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "past_experience": {
+          "name": "past_experience",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "intent": {
+          "name": "intent",
+          "type": "intent",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "qualification_score": {
+          "name": "qualification_score",
+          "type": "real",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "transcript": {
+          "name": "transcript",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "deleted_at": {
+          "name": "deleted_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "leads_email_idx": {
+          "name": "leads_email_idx",
+          "columns": [
+            {
+              "expression": "email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "leads_call_status_idx": {
+          "name": "leads_call_status_idx",
+          "columns": [
+            {
+              "expression": "call_status",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "leads_intent_idx": {
+          "name": "leads_intent_idx",
+          "columns": [
+            {
+              "expression": "intent",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "leads_created_at_idx": {
+          "name": "leads_created_at_idx",
+          "columns": [
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "leads_deleted_at_idx": {
+          "name": "leads_deleted_at_idx",
+          "columns": [
+            {
+              "expression": "deleted_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "leads_qualification_score_idx": {
+          "name": "leads_qualification_score_idx",
+          "columns": [
+            {
+              "expression": "qualification_score",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {},
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    }
+  },
+  "enums": {
+    "public.call_status": {
+      "name": "call_status",
+      "schema": "public",
+      "values": [
+        "pending",
+        "calling",
+        "completed",
+        "failed",
+        "no_answer"
+      ]
+    },
+    "public.company_size": {
+      "name": "company_size",
+      "schema": "public",
+      "values": [
+        "1-10",
+        "11-50",
+        "51-200",
+        "201-500",
+        "501-1000",
+        "1000+"
+      ]
+    },
+    "public.intent": {
+      "name": "intent",
+      "schema": "public",
+      "values": [
+        "hot",
+        "warm",
+        "cold"
+      ]
+    }
+  },
+  "schemas": {},
+  "sequences": {},
+  "roles": {},
+  "policies": {},
+  "views": {},
+  "_meta": {
+    "columns": {},
+    "schemas": {},
+    "tables": {}
+  }
+}

@@ -1,0 +1,73 @@
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: lead-qualifier-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: lead_qualifier
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - lead-qualifier-network
+
+  # Backend API
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: lead-qualifier-backend
+    environment:
+      - DATABASE_URL=postgresql://postgres:postgres@postgres:5432/lead_qualifier
+      - PORT=3000
+      - NODE_ENV=production
+      - API_URL=http://localhost:3000
+      # These must be provided by user
+      - VAPI_API_KEY=${VAPI_API_KEY}
+      - VAPI_WEBHOOK_SECRET=${VAPI_WEBHOOK_SECRET}
+      - VAPI_PHONE_NUMBER_ID=${VAPI_PHONE_NUMBER_ID}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "bun", "-e", "fetch('http://localhost:3000/health').then(r => r.ok ? process.exit(0) : process.exit(1)).catch(() => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    networks:
+      - lead-qualifier-network
+
+  # Frontend (Production)
+  frontend:
+    build:
+      context: .
+      dockerfile: frontend/Dockerfile
+      args:
+        - VITE_API_URL=
+    container_name: lead-qualifier-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    networks:
+      - lead-qualifier-network
+
+volumes:
+  postgres_data:
+
+networks:
+  lead-qualifier-network:
+    driver: bridge

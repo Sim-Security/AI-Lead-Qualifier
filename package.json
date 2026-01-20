@@ -1,0 +1,20 @@
+{
+  "name": "ai-lead-qualifier",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "frontend",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "bun run --filter '*' dev",
+    "dev:backend": "bun run --filter backend dev",
+    "dev:frontend": "bun run --filter frontend dev",
+    "build": "bun run --filter '*' build",
+    "test": "bun run --filter '*' test",
+    "lint": "bun run --filter '*' lint",
+    "db:migrate": "bun run --filter backend db:migrate",
+    "db:seed": "bun run --filter backend db:seed",
+    "db:studio": "bun run --filter backend db:studio"
+  }
+}

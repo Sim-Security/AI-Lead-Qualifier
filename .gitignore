@@ -1,0 +1,47 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build outputs
+dist/
+build/
+.next/
+out/
+
+# Environment - NEVER commit these
+.env
+.env.local
+.env.*.local
+**/.env
+!.env.example
+!**/.env.example
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Testing
+coverage/
+.nyc_output/
+
+# Misc
+*.tsbuildinfo
+.turbo/
+
+# Docker
+.docker/
+
+# Lock files (optional - uncomment if you want to ignore)
+# bun.lock
