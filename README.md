@@ -4,6 +4,8 @@
 
 An AI-powered voice agent that automatically calls and qualifies leads when they submit a website form. Built with TypeScript, Bun, Hono, and Vapi.ai.
 
+![System Architecture](docs/images/lead-qualifier-architecture.png)
+
 ## Features
 
 - **Instant Lead Engagement**: Automatically calls leads within seconds of form submission
@@ -59,19 +61,23 @@ Run with pre-built images from GitHub Container Registry - no build required:
 # 1. Download the compose file
 curl -O https://raw.githubusercontent.com/Sim-Security/AI-Lead-Qualifier/main/docker-compose.pull.yml
 
-# 2. Create .env file with your API keys
-cat > .env << 'EOF'
-VAPI_API_KEY=your_key_here
-VAPI_WEBHOOK_SECRET=your_secret_here
-VAPI_PHONE_NUMBER_ID=your_phone_id_here
-ANTHROPIC_API_KEY=your_key_here
-EOF
-
-# 3. Start everything
+# 2. Start everything
 docker compose -f docker-compose.pull.yml up -d
 
-# 4. Open http://localhost in your browser
+# 3. Open http://localhost in your browser
 ```
+
+> **⚠️ Important:** If you don't set environment variables, you **MUST** configure your API keys in the **Settings** tab in the frontend before the voice calling features will work.
+>
+> Alternatively, create a `.env` file before starting:
+> ```bash
+> cat > .env << 'EOF'
+> VAPI_API_KEY=your_key_here
+> VAPI_WEBHOOK_SECRET=your_secret_here
+> VAPI_PHONE_NUMBER_ID=your_phone_id_here
+> ANTHROPIC_API_KEY=your_key_here
+> EOF
+> ```
 
 ### Option 2: Build from Source
 
@@ -98,6 +104,8 @@ docker compose up -d
 
 # 5. Open http://localhost in your browser
 ```
+
+> **⚠️ Important:** If you skip step 3, you **MUST** configure your API keys in the **Settings** tab in the frontend before the voice calling features will work.
 
 > **Note:** The AI calling feature requires a valid phone number in E.164 format. The form includes a country code selector (defaults to +1 for US/Canada).
 
@@ -192,6 +200,8 @@ ai-lead-qualifier/
 - `GET /health` - Health check
 
 ## How It Works
+
+![Lead Qualification Flow](docs/images/lead-qualifier-flow.png)
 
 1. **Form Submission**: User fills out the lead form on the frontend
 2. **Webhook Trigger**: Form data POSTed to `/api/webhooks/form`
