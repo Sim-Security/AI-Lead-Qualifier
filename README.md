@@ -51,14 +51,36 @@ This is an open-source project. **You must provide your own API keys** to use th
 
 ## Quick Start
 
-### Option 1: Docker Compose (Recommended)
+### Option 1: Pre-built Docker Images (Recommended)
 
-The easiest way to run the full stack locally:
+Run with pre-built images from GitHub Container Registry - no build required:
+
+```bash
+# 1. Download the compose file
+curl -O https://raw.githubusercontent.com/Sim-Security/AI-Lead-Qualifier/main/docker-compose.pull.yml
+
+# 2. Create .env file with your API keys
+cat > .env << 'EOF'
+VAPI_API_KEY=your_key_here
+VAPI_WEBHOOK_SECRET=your_secret_here
+VAPI_PHONE_NUMBER_ID=your_phone_id_here
+ANTHROPIC_API_KEY=your_key_here
+EOF
+
+# 3. Start everything
+docker compose -f docker-compose.pull.yml up -d
+
+# 4. Open http://localhost in your browser
+```
+
+### Option 2: Build from Source
+
+Clone and build the images locally:
 
 ```bash
 # 1. Clone the repo
 git clone https://github.com/Sim-Security/AI-Lead-Qualifier.git
-cd ai-lead-qualifier
+cd AI-Lead-Qualifier
 
 # 2. Copy environment template and add YOUR keys
 cp .env.example .env
@@ -79,7 +101,7 @@ docker compose up -d
 
 > **Note:** The AI calling feature requires a valid phone number in E.164 format. The form includes a country code selector (defaults to +1 for US/Canada).
 
-### Option 2: Hugging Face Spaces
+### Option 3: Hugging Face Spaces
 
 Deploy to Hugging Face Spaces for free hosting:
 
@@ -96,7 +118,7 @@ Deploy to Hugging Face Spaces for free hosting:
 
 The root `Dockerfile` is configured for HF Spaces (port 7860).
 
-### Option 3: Local Development
+### Option 4: Local Development
 
 ```bash
 # 1. Clone and install
