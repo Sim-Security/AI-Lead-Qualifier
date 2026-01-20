@@ -2,8 +2,8 @@ import { Hono } from "hono";
 import { z } from "zod";
 import { db, schema } from "@/db/index.ts";
 import { eq, and, isNull } from "drizzle-orm";
-import { env } from "@/config/env.ts";
 import { log } from "@/middleware/logger.ts";
+import { getConfig } from "@/config/runtime-config.ts";
 import { extractQualificationData, type CallContext } from "@/services/index.ts";
 import type { ApiResponse } from "@/types/index.ts";
 import type { Lead } from "@/db/schema.ts";
@@ -235,15 +235,27 @@ End the call by thanking them and letting them know Adam or someone from the Ran
  * Initiates a Vapi call for a lead using transient assistant
  */
 async function initiateVapiCall(lead: Lead): Promise<{ callId: string } | null> {
+  const config = getConfig();
+
+  if (!config.vapiApiKey) {
+    log("error", "Vapi API key not configured", { leadId: lead.id });
+    return null;
+  }
+
+  if (!config.vapiPhoneNumberId) {
+    log("error", "Vapi Phone Number ID not configured", { leadId: lead.id });
+    return null;
+  }
+
   try {
     const response = await fetch("https://api.vapi.ai/call/phone", {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${env.VAPI_API_KEY}`,
+        Authorization: `Bearer ${config.vapiApiKey}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        phoneNumberId: env.VAPI_PHONE_NUMBER_ID,
+        phoneNumberId: config.vapiPhoneNumberId,
         customer: {
           number: lead.phone,
           name: `${lead.firstName} ${lead.lastName}`,
@@ -627,11 +639,16 @@ webhooks.post("/sync/:leadId", async (c) => {
     return c.json({ success: false, error: "No call ID associated with this lead" }, 400);
   }
 
+  const config = getConfig();
+  if (!config.vapiApiKey) {
+    return c.json({ success: false, error: "Vapi API key not configured" }, 400);
+  }
+
   // Fetch call data from Vapi
   try {
     const response = await fetch(`https://api.vapi.ai/call/${lead.callId}`, {
       headers: {
-        Authorization: `Bearer ${env.VAPI_API_KEY}`,
+        Authorization: `Bearer ${config.vapiApiKey}`,
       },
     });
 
