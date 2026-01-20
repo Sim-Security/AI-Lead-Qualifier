@@ -1,5 +1,7 @@
 # AI Voice Agent Lead Qualifier
 
+[![CI](https://github.com/Sim-Security/AI-Lead-Qualifier/actions/workflows/ci.yml/badge.svg)](https://github.com/Sim-Security/AI-Lead-Qualifier/actions/workflows/ci.yml)
+
 An AI-powered voice agent that automatically calls and qualifies leads when they submit a website form. Built with TypeScript, Bun, Hono, and Vapi.ai.
 
 ## Features
