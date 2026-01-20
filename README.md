@@ -55,7 +55,7 @@ The easiest way to run the full stack locally:
 
 ```bash
 # 1. Clone the repo
-git clone https://github.com/yourusername/ai-lead-qualifier.git
+git clone https://github.com/Sim-Security/AI-Lead-Qualifier.git
 cd ai-lead-qualifier
 
 # 2. Copy environment template and add YOUR keys
@@ -69,13 +69,10 @@ nano .env
 #   VAPI_PHONE_NUMBER_ID=your_phone_id_here
 #   ANTHROPIC_API_KEY=your_key_here
 
-# 4. Start everything
+# 4. Start everything (migrations run automatically)
 docker compose up -d
 
-# 5. Run database migrations
-docker compose exec backend bun run db:migrate
-
-# 6. Open http://localhost in your browser
+# 5. Open http://localhost in your browser
 ```
 
 > **Note:** The AI calling feature requires a valid phone number in E.164 format. The form includes a country code selector (defaults to +1 for US/Canada).
@@ -101,7 +98,7 @@ The root `Dockerfile` is configured for HF Spaces (port 7860).
 
 ```bash
 # 1. Clone and install
-git clone https://github.com/yourusername/ai-lead-qualifier.git
+git clone https://github.com/Sim-Security/AI-Lead-Qualifier.git
 cd ai-lead-qualifier
 bun install
 
@@ -112,10 +109,7 @@ docker compose up -d postgres
 cp .env.example .env
 # Edit .env with your API keys
 
-# 4. Run migrations
-bun run db:migrate
-
-# 5. Start development servers
+# 4. Start development servers (migrations run automatically)
 bun run dev
 
 # Backend: http://localhost:3000
