@@ -388,23 +388,6 @@ function validateQualificationResult(result: Partial<QualificationResult>): Qual
 }
 
 /**
- * Returns default qualification result for error cases or empty transcripts
- *
- * @returns Default qualification data
- */
-function getDefaultQualificationResult(): QualificationResult {
-  return {
-    motivation: "Unable to determine - transcript analysis failed",
-    timeline: "Unknown",
-    budget: "Unknown",
-    authority: "Unknown",
-    pastExperience: "Unknown",
-    intent: "cold",
-    qualificationScore: 0,
-  };
-}
-
-/**
  * Generates a summary of the call from the transcript
  * Useful for quick review of call outcomes
  *

@@ -95,8 +95,13 @@ settings.post("/config", zValidator("json", setConfigSchema), async (c) => {
     }
   }
 
-  // Set the config
-  setConfig(body);
+  // Set the config - convert undefined to null for type compatibility
+  setConfig({
+    vapiApiKey: body.vapiApiKey ?? null,
+    vapiWebhookSecret: body.vapiWebhookSecret ?? null,
+    vapiPhoneNumberId: body.vapiPhoneNumberId ?? null,
+    anthropicApiKey: body.anthropicApiKey ?? null,
+  });
 
   return c.json({
     success: true,

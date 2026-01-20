@@ -7,7 +7,7 @@
 
 import { VapiClient } from "@vapi-ai/server-sdk";
 import { env } from "@/config/env";
-import { getConfig, isConfigured } from "@/config/runtime-config";
+import { getConfig } from "@/config/runtime-config";
 
 /**
  * Get Vapi client with current runtime config
