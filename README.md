@@ -223,22 +223,6 @@ ai-lead-qualifier/
 | Render | Managed | Included | Free tier |
 | Fly.io | Managed | External | Free tier |
 
-## Development
-
-### Running Tests
-
-```bash
-bun run test
-```
-
-### Database Commands
-
-```bash
-bun run db:generate  # Generate migration from schema changes
-bun run db:migrate   # Run pending migrations
-bun run db:studio    # Open Drizzle Studio
-```
-
 ## Contributing
 
 1. Fork the repo
