@@ -45,3 +45,4 @@ coverage/
 
 # Lock files (optional - uncomment if you want to ignore)
 # bun.lock
+PRD.md
